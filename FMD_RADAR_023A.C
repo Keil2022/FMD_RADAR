@@ -51,8 +51,10 @@ void interrupt ISR(void)
 
 void Sys_Init(void) 
 { 
-	OSCCON = 0B01010001;    //WDT:32KHZ;	IRCF=101=16MHZ/4=4MHZ;
-    //Bit0=1——系统时钟为内部振荡器，Bit0=0——时钟源由FOSC<2：0>决定即编译选项时选择
+	OSCCON = 0B01010001; 
+    //WDT:32KHZ;	
+    //IRCF=101=16MHZ/4=4MHZ;
+    //Bit0	=	1——系统时钟为内部振荡器；0——时钟源由FOSC<2：0>决定即编译选项时选择
 
     INTCON= 0;      //暂禁止所有中断
 	
@@ -102,7 +104,8 @@ int main(void)
 {
 	Sys_Init();
     Key_Init();
-
+	LED_Init();
+    
 	//开中断
 	T0IE = 1;  	//开定时器0中断
 	GIE = 1;   	//开总中断
