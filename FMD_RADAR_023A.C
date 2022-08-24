@@ -12,6 +12,7 @@
 #include "led.c"
 #include "Hardward.c"
 #include "RADAR.c"
+#include "motor.c"
 
 BITS_T falg;
 #define Per1ms		falg.bit0
@@ -105,6 +106,7 @@ int main(void)
 	Sys_Init();
     Key_Init();
 	LED_Init();
+    Radar_Init();
     
 	//开中断
 	T0IE = 1;  	//开定时器0中断

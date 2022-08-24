@@ -2,25 +2,23 @@
 #ifndef __KEY_H
 #define __KEY_H
 
+#include "Hardward.c"
 #include "led.c"
+#include "RADAR.c"
 
-#define KEY1    RA7
-#define KEY2    RA6
-#define KEY3    RC1
-#define KEY4    RA4
+#define KEY1    RA2
+#define KEY2    RA3
 
 #define KEY_Press 	1
 #define KEY_Lift 		0
 #define	True			1
 #define	Fault			0
+#define	Lid_ON				1
+#define	Lid_OFF			0
 
-#define KEY_ShortTime		5	//50ms
+#define KEY_ShortTime		2		//50ms
 #define KEY_LongTime		100	//1s
 #define KEY_EndTime		300	//3s
-#define Inching_SetTime	5
-
-#define Back_Off_BrakeTime		1
-#define Back_Off_BackwardTime	(Back_Off_BrakeTime+1)
 
 bit KEY1_ShortOK;	//短按有效
 bit KEY1_LongOK;		//长按有效
@@ -34,41 +32,21 @@ bit KEY2_EndOK;
 u8 KEY2_Phase;
 u16 KEY2_TimeCount;
 
-bit KEY3_ShortOK;
-bit KEY3_LongOK;	
-bit KEY3_EndOK;
-u8 KEY3_Phase;
-u16 KEY3_TimeCount;
-
-bit KEY4_ShortOK;
-bit KEY4_LongOK;	
-bit KEY4_EndOK;
-u8 KEY4_Phase;
-u16 KEY4_TimeCount;
-
-bit MODE; 	//0-点动模式； 1-连动模式
-u8 Inching_Time;
-u8 Back_Off;
+bit State;
 
 void Key_Init(void)
 {
-	TRISC |= 0x02;	//PC1输入模式
-	WPUC |= 0x02;	//PC1弱上拉
+	TRISA2 = 1;	//输入模式	//0-输出；1-输入；
+	WPUA2 = 1;	//弱上拉
    
-	TRISA |= 0xD0;	//PA4 6 7输入模式
-	WPUA |= 0xD0;	//PA4 6 7弱上拉 
+	TRISA3 = 1;	//输入模式
+	WPUA3 = 1;	//弱上拉 
     
 	KEY1_Phase = 0;
     KEY1_TimeCount = 0;
     
 	KEY2_Phase = 0;
     KEY2_TimeCount = 0;
-    
-	KEY3_Phase = 0;
-    KEY3_TimeCount = 0;
-    
-	KEY4_Phase = 0;
-    KEY4_TimeCount = 0;
 }
 
 void Key1_Scanf(void)
@@ -166,43 +144,6 @@ void Key_Scanf(void)
 		
 		KEY2_TimeCount = 0;
 	}
-	
-	//按键3
-	if(KEY3 == KEY_Press)
-	{
-		KEY3_TimeCount++;
-		if(KEY3_TimeCount >=  KEY_LongTime)
-		{
-			//KEY2_Phase = 1;	//注释掉为 不跳转长按功能
-		}
-        else {/*do nothing*/}
-	}
-	else
-	{
-		if(KEY3_TimeCount >= KEY_ShortTime)	KEY3_ShortOK = True;
-        else {/*do nothing*/}
-        
-		KEY3_TimeCount = 0;
-	}	
-	
-	//按键4
-	if(KEY4 == KEY_Press)
-	{
-		KEY4_TimeCount++;
-		if(KEY4_TimeCount >=  KEY_LongTime)
-		{
-			//KEY2_Phase = 1;	//注释掉为 不跳转长按功能
-            
-		}
-        else {/*do nothing*/}
-	}
-	else
-	{
-		if(KEY4_TimeCount >= KEY_ShortTime)	KEY4_ShortOK = True;
-        else {/*do nothing*/}
-
-		KEY4_TimeCount = 0;
-	}    
 }
 
 void Key_Handle(void)
@@ -211,6 +152,12 @@ void Key_Handle(void)
     {
 		KEY1_ShortOK = Fault;
 		
+		RADAR ^= 1;
+		if(RADAR == 1)	LED_G();
+        else LED_R();
+        
+		delay_ms(500);
+		LED_OFF();
 	}
     else {/*do nothing*/}
     
@@ -218,22 +165,9 @@ void Key_Handle(void)
     {
 		KEY2_ShortOK = Fault;
 		
+		State ^= 1;
 	}
     else {/*do nothing*/}
-    
-	if(KEY3_ShortOK == True)
-    {
-		KEY3_ShortOK = Fault;
-		
-	}
-    else {/*do nothing*/}
-    
-	if(KEY4_ShortOK == True)
-    {
-		KEY4_ShortOK = Fault;
-        
-	}
-    else	 {/*do nothing*/}
 }
 
 #endif
