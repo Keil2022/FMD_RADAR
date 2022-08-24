@@ -4,7 +4,11 @@
 
 #include "Hardward.c"
 #include "led.c"
+<<<<<<< HEAD
 #include "RADAR.c"
+=======
+#include "Hardward.c"
+>>>>>>> 54d24cf10b40b6aea72380c485ba53c68b9a6861
 
 #define KEY1    RA2
 #define KEY2    RA3
