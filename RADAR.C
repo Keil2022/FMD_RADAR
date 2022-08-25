@@ -11,7 +11,7 @@ void Radar_Init(void)
 	RADAR = 0;
     
 	TRISA5 = 1;	//输入模式
-    WPUA5 = 1;	//弱上拉
+    //WPUA5 = 1;	//弱上拉
 }
 
 #endif

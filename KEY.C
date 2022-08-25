@@ -38,10 +38,10 @@ bit State;
 void Key_Init(void)
 {
 	TRISA2 = 1;	//输入模式	//0-输出；1-输入；
-	WPUA2 = 1;	//弱上拉
+	//WPUA2 = 1;	//弱上拉
    
 	TRISA3 = 1;	//输入模式
-	WPUA3 = 1;	//弱上拉 
+	//WPUA3 = 1;	//弱上拉 
     
 	KEY1_Phase = 0;
     KEY1_TimeCount = 0;

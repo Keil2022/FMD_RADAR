@@ -43,32 +43,54 @@ typedef struct {
     unsigned char bit7         : 1;     
 } BITS_T;
 
-//延时(n*4+8)us
-void delay_4us(u16 us)
+/*-------------------------------------------------
+ *	函数名称：DelayUs
+ *	功能：   短延时函数 --16M-2T--大概快1%左右.
+ *	输入参数：Time 延时时间长度 延时时长Time Us
+ *	返回参数：无 
+ -------------------------------------------------*/
+void DelayUs(unsigned char Time)
 {
-	Nop();Nop();   	
-	for(;us--;)	{Nop();Nop();Nop();}
-}
-
-//延时(n*4+8)us
-void delay_10us(u16 us)
-{   	
-	Nop();Nop(); 
-	for(;us--;)	{Nop();Nop();Nop();Nop();}
-}
-
-//延時nms
-void delay_ms(u16 ms)
+	unsigned char a;
+	for(a=0;a<Time;a++)
+	{
+		NOP();
+	}
+}                  
+/*-------------------------------------------------
+ *	函数名称：DelayMs
+ *	功能：   短延时函数
+ *	输入参数：Time 延时时间长度 延时时长Time ms
+ *	返回参数：无 
+ -------------------------------------------------*/
+void DelayMs(unsigned char Time)
 {
-	u8 us;
-	for(;ms--;)	
-		for(us=80;us--;)
+	unsigned char a,b;
+	for(a=0;a<Time;a++)
+	{
+		for(b=0;b<5;b++)
 		{
-            Nop();Nop();
-			ClrWdt(); //清看门狗
+		 	DelayUs(197); 	//快1%
 		}
+	}
 }
- 
+/*-------------------------------------------------
+ *	函数名称：DelayS
+ *	功能：   短延时函数
+ *	输入参数：Time 延时时间长度 延时时长Time S
+ *	返回参数：无 
+ -------------------------------------------------*/
+void DelayS(unsigned char Time)
+{
+	unsigned char a,b;
+	for(a=0;a<Time;a++)
+	{
+		for(b=0;b<10;b++)
+		{
+		 	DelayMs(100); 	
+		}
+	}
+}
 
 /*----------------------------------------------------
  *	函数名称：EEPROMread
@@ -104,7 +126,7 @@ void EEPROMwrite(u8 EEAddr,u8 Data)
 	WR = 1;					//置位WR启动编程
 	while(WR);      		//等待EE写入完成
 	GIE = 1;
-	delay_ms(9);
+	DelayMs(9);
 }
  
            

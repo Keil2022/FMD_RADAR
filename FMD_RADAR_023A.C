@@ -15,62 +15,45 @@
 #include "motor.c"
 
 BITS_T falg;
-#define Per1ms		falg.bit0
-#define Per10ms		falg.bit1
-#define Per500ms	falg.bit2
+
+u8 ReadAPin;
 
 //中断入口
 void interrupt ISR(void)
 {
-	static u8 t00, t01, t02;
-
-	if(T0IF) 
-	{ ///100us每次
-		T0IF = 0;
-		TMR0 += 256-200+2;	//注意:对TMR0重新赋值TMR0在两个周期内不变化
-        
-		if(++t00 >= 10)
-        {
-			t00 = 0;
-            Per1ms = 1;
-            if(++t01 >= 10)
-            {
-                t01 = 0;
-                Per10ms = 1;
-                
-				if(++t02 >= 50)
-                {
-					t02 = 0;
-                    Per500ms = 1;
-				}
-			}
-		}
-	}
-    
-	INTF = 0;  
+	//PA电平变化中断**********************
+	 if(PAIE && PAIF)		
+    {
+		ReadAPin = PORTA; 	//读取PORTA数据清PAIF标志
+		PAIF = 0;  				//清PAIF标志位
+		PAIE = 0;  				//暂先禁止PA2中断
+		IOCA2 = 0;  				//禁止PA2电平变化中断
+        IOCA3 = 0;  				//禁止PA3电平变化中断
+        IOCA5 = 0;  				//禁止PA2电平变化中断
+    }
 }
 
 void Sys_Init(void) 
 { 
-	OSCCON = 0B01010001; 
+	OSCCON = 0B01110001; 
     //WDT:32KHZ;	
-    //IRCF=101=16MHZ/4=4MHZ;
+    //IRCF=111=16MHZ;	2T模式
     //Bit0	=	1——系统时钟为内部振荡器；0——时钟源由FOSC<2：0>决定即编译选项时选择
 
     INTCON= 0;      //暂禁止所有中断
 	
 	//端口配置
 	//A
-    TRISA = 0x00;    //0-输出；1-输入；
-    PORTA = 0x00;	//数据寄存器
-    //WPUA = 0x00;    //0-关闭弱上拉；1-打开弱上拉
+    TRISA = 0B00000000;    	//0-输出；1-输入；
+    PORTA = 0B00000000;	//数据寄存器
+    WPUA = 0B00000000;    //0-关闭弱上拉；1-打开弱上拉
 
 	//C
-    TRISC     = 0x00;    //0-输出；1-输入；
-    PORTC     = 0x00;
-    //WPUC      = 0x00;    //0-关闭弱上拉；1-打开弱上拉
+    TRISC     = 0B00000000;    //0-输出；1-输入；
+    PORTC     = 0B00000000;	
+    WPUC      = 0B00000000;    //0-关闭弱上拉；1-打开弱上拉
     
-    MSCKCON = 0x00;
+    MSCKCON =	0B00000000;
 	//MSCKCON.7——保留位:写0
     //MSCKCON.6—REG_OE:1 = 打开片内稳压器，PA4 和 PC5 输出稳压器电压；\
 											  0 = PA4 和 PC5 为普通 IO
@@ -91,51 +74,78 @@ void Sys_Init(void)
     
 //    ADCON1 = 0B01100000;     //DIVS=0,时钟选FOSC    //ADCS[2:0]=110,分频FOSC/64
 //    ADCON0 = 0B10011101;     //B7,ADFM=1,结果右对齐                         
-    ANSEL = 0X00;	//关闭所有模拟输入
+   // ANSEL = 0X00;	//关闭所有模拟输入
 
-    OPTION = 0x08;    //Bit4=1 WDT MODE,PS=000=1:1 WDT RATE	
-    //Bit7(RAPU)=0 ENABLED PULL UP PA
-    //预分频器分配给 WDT
-    
-    T0IF = 0;	//0 = Timer0寄存器没有溢出
+    OPTION = 0B00001000;    //Bit3 = 1 预分频器分配给 WDT；PS=000=1:1 WDT RATE	
+											//Bit7(RAPU)=0 ENABLED PULL UP PA
 }
 
+void PA_Level_Change_INITIAL(void)
+{
+	ANSEL = 0B11010011;		//关闭中断引脚模拟输入功能
+    
+    TRISA2 = 1;						//SET PA2 INPUT
+    TRISA3 = 1;
+	TRISA5 =1; 						
+    
+	ReadAPin = PORTA;			//清PA电平变化中断
+	PAIF =0;   						//清PA INT中断标志位
+    
+	IOCA2 = 1;  				//禁止PA2电平变化中断
+	IOCA3 = 1;  				//禁止PA3电平变化中断
+	IOCA5 = 1;  				//禁止PA2电平变化中断
+    
+	PAIE =1;   						//使能PA INT中断
+   //GIE =1;    						//使能全局中断
+}
+
+u8 FCount;
 //主函数
 int main(void)
 {
+	DelayMs(200);
 	Sys_Init();
     Key_Init();
 	LED_Init();
-    Radar_Init();
-    
-	//开中断
-	T0IE = 1;  	//开定时器0中断
-	GIE = 1;   	//开总中断
+	Radar_Init();
+    MOTOR_Init();
 
 	while(1)
     {
-		T0IE = 1;  	//開定時器0中斷
-		GIE = 1;   	//總中斷
-		ClrWdt(); 		//清看门狗
+		DelayMs(10);	
         
-		if(Per1ms)
+        if(POUT == 1)	//雷达检测高电平
         {
-            Per1ms = 0;
-		}
+			DelayMs(10);
+			while(POUT);
+			
+        }
         
-		if(Per10ms)
+		if(KEY1 == 0)	//按键检测低电平
         {
-			Per10ms = 0;
-            
-			Key_Scanf();
-            Key_Handle();
-		}
-        
-		if(Per500ms)
-        {
-            Per500ms = 0;
+            DelayMs(10);
+            while(!KEY1);
             
 		}
+        
+		if(KEY2 == 0)	//按键检测低电平
+        {
+            DelayMs(10);
+            while(!KEY2);
+            
+        }
+        
+//		for(FCount=0;FCount<100;FCount++)	//输出100次波形	
+//		{
+//			RADAR = 1;				
+//			DelayMs(10);  	//10ms 
+//			RADAR = 0;
+//			DelayMs(10); 
+//		}
+        
+       PA_Level_Change_INITIAL();
+       GIE = 1; 
+       SLEEP(); 
 	}
 	return 0;
 }
