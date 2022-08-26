@@ -14,15 +14,23 @@
 #include "RADAR.c"
 #include "motor.c"
 
+#define ON_Time		10		//s
+#define	OFF_Time		10
+
 BITS_T falg;
+#define STATE	falg.bit0	//0-关；1-开
+
+#define eSTATE 	0
+#define	eSetAddr	1
 
 u8 ReadAPin;
+u8 FCount;
 
 //中断入口
 void interrupt ISR(void)
 {
 	//PA电平变化中断**********************
-	 if(PAIE && PAIF)		
+	 if(PAIE && PAIF)
     {
 		ReadAPin = PORTA; 	//读取PORTA数据清PAIF标志
 		PAIF = 0;  				//清PAIF标志位
@@ -99,33 +107,79 @@ void PA_Level_Change_INITIAL(void)
    //GIE =1;    						//使能全局中断
 }
 
-u8 FCount;
+//数据初始化
+void InitRam(void)
+{
+    u8 set;
+    
+	DelayMs(20);
+    set = EEPROMread(eSetAddr);
+    if(set!=0x5A)
+    {
+		set=0x5A;
+        STATE = 1;
+        
+		EEPROMwrite(eSTATE,STATE);
+		EEPROMwrite(eSetAddr, set);  
+    }
+    STATE = EEPROMread(eSTATE);
+}
+
 //主函数
 int main(void)
 {
-	DelayMs(200);
+	DelayS(3);	//3s热机，让外设就位
+    
 	Sys_Init();
     Key_Init();
 	LED_Init();
 	Radar_Init();
     MOTOR_Init();
+	
+	InitRam();
 
 	while(1)
     {
 		DelayMs(10);	
+        STATE = EEPROMread(eSTATE);	//读取状态
         
-        if(POUT == 1)	//雷达检测高电平
+        if(POUT == 1)	//雷达检测高电平——开
         {
-			DelayMs(10);
-			while(POUT);
-			
+			Forward();
+			DelayS(ON_Time);
+            Brake();
+            DelayS(1);
+            STOP();
+            
+			STATE = 1;
+			EEPROMwrite(eSTATE,STATE);
         }
+        else		//雷达检测低电平——关
+        {
+			Backward();
+			DelayS(OFF_Time);
+            Brake();
+            DelayS(1);
+            STOP();
+            
+            STATE = 0;
+			EEPROMwrite(eSTATE,STATE);
+		}
         
 		if(KEY1 == 0)	//按键检测低电平
         {
             DelayMs(10);
             while(!KEY1);
             
+            RADAR ^= 1;
+            
+            if(RADAR)		LED_G();
+            else				LED_R();
+            
+            DelayMs(500);
+            LED_OFF();
+            
+            while(POUT);	//等待模块启动完成
 		}
         
 		if(KEY2 == 0)	//按键检测低电平
@@ -133,6 +187,27 @@ int main(void)
             DelayMs(10);
             while(!KEY2);
             
+			if(STATE)
+            {
+                STATE = 0;
+                EEPROMwrite(eSTATE,STATE);
+                
+				Backward();
+				DelayS(OFF_Time);
+				Brake();
+				DelayS(1);
+				STOP();
+			}
+            else
+            {
+                STATE = 1;
+                EEPROMwrite(eSTATE,STATE);
+                Forward();
+				DelayS(ON_Time);
+				Brake();
+				DelayS(1);
+				STOP();
+			}
         }
         
 //		for(FCount=0;FCount<100;FCount++)	//输出100次波形	
