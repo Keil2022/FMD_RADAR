@@ -128,7 +128,7 @@ void InitRam(void)
 //主函数
 int main(void)
 {
-	DelayS(3);	//3s热机，让外设就位
+	DelayS(2);	//热机，让外设就位
     
 	Sys_Init();
     Key_Init();
@@ -145,25 +145,31 @@ int main(void)
         
         if(POUT == 1)	//雷达检测高电平——开
         {
-			Forward();
-			DelayS(ON_Time);
-            Brake();
-            DelayS(1);
-            STOP();
-            
-			STATE = 1;
-			EEPROMwrite(eSTATE,STATE);
+			if(STATE == 0)
+            {
+				Forward();
+				DelayS(ON_Time);
+				Brake();
+				DelayS(1);
+				STOP();
+				
+				STATE = 1;
+				EEPROMwrite(eSTATE,STATE);
+            }
         }
         else		//雷达检测低电平——关
         {
-			Backward();
-			DelayS(OFF_Time);
-            Brake();
-            DelayS(1);
-            STOP();
-            
-            STATE = 0;
-			EEPROMwrite(eSTATE,STATE);
+			if(STATE)
+            {
+				Backward();
+				DelayS(OFF_Time);
+				Brake();
+				DelayS(1);
+				STOP();
+				
+				STATE = 0;
+				EEPROMwrite(eSTATE,STATE);
+            }
 		}
         
 		if(KEY1 == 0)	//按键检测低电平
@@ -218,9 +224,9 @@ int main(void)
 //			DelayMs(10); 
 //		}
         
-       PA_Level_Change_INITIAL();
-       GIE = 1; 
-       SLEEP(); 
+//       PA_Level_Change_INITIAL();
+//       GIE = 1; 
+//       SLEEP(); 
 	}
 	return 0;
 }

@@ -7,8 +7,8 @@
 #include "RADAR.c"
 #include "Hardward.c"
 
-#define KEY1    RA2
-#define KEY2    RA3
+#define KEY1    RA3
+#define KEY2    RA2
 
 #define KEY_Press 	1
 #define KEY_Lift 		0
