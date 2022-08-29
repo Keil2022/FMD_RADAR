@@ -128,7 +128,7 @@ void InitRam(void)
 //主函数
 int main(void)
 {
-	DelayS(2);	//热机，让外设就位
+	//DelayS(2);	//热机，让外设就位
     
 	Sys_Init();
     Key_Init();
@@ -140,81 +140,90 @@ int main(void)
 
 	while(1)
     {
-		DelayMs(10);	
-        STATE = EEPROMread(eSTATE);	//读取状态
+//		DelayMs(10);	
+//        STATE = EEPROMread(eSTATE);	//读取状态
         
-        if(POUT == 1)	//雷达检测高电平——开
+		if(KEY2)	//按键检测低电平
         {
-			if(STATE == 0)
-            {
-				Forward();
-				DelayS(ON_Time);
-				Brake();
-				DelayS(1);
-				STOP();
-				
-				STATE = 1;
-				EEPROMwrite(eSTATE,STATE);
-            }
-        }
-        else		//雷达检测低电平——关
-        {
-			if(STATE)
-            {
-				Backward();
-				DelayS(OFF_Time);
-				Brake();
-				DelayS(1);
-				STOP();
-				
-				STATE = 0;
-				EEPROMwrite(eSTATE,STATE);
-            }
-		}
+			LED_G();
+	   }
+       else
+       {
+			LED_OFF();
+}
+
+//        if(POUT == 1)	//雷达检测高电平——开
+//        {
+//			if(STATE == 0)
+//            {
+//				Forward();
+//				DelayS(ON_Time);
+//				Brake();
+//				DelayS(1);
+//				STOP();
+//				
+//				STATE = 1;
+//				EEPROMwrite(eSTATE,STATE);
+//            }
+//        }
+//        else		//雷达检测低电平——关
+//        {
+//			if(STATE)
+//            {
+//				Backward();
+//				DelayS(OFF_Time);
+//				Brake();
+//				DelayS(1);
+//				STOP();
+//				
+//				STATE = 0;
+//				EEPROMwrite(eSTATE,STATE);
+//            }
+//		}
         
-		if(KEY1 == 0)	//按键检测低电平
-        {
-            DelayMs(10);
-            while(!KEY1);
-            
-            RADAR ^= 1;
-            
-            if(RADAR)		LED_G();
-            else				LED_R();
-            
-            DelayMs(500);
-            LED_OFF();
-            
-            while(POUT);	//等待模块启动完成
-		}
+//		if(KEY1 == 0)	//按键检测低电平
+//        {
+//            DelayMs(10);
+//            while(!KEY1);
+//            
+//            RADAR ^= 1;
+//            
+//            if(RADAR)		LED_G();
+//            else				LED_R();
+//            
+//            DelayMs(500);
+//            LED_OFF();
+//            
+//            while(POUT);	//等待模块启动完成
+//		}
         
-		if(KEY2 == 0)	//按键检测低电平
-        {
-            DelayMs(10);
-            while(!KEY2);
-            
-			if(STATE)
-            {
-                STATE = 0;
-                EEPROMwrite(eSTATE,STATE);
-                
-				Backward();
-				DelayS(OFF_Time);
-				Brake();
-				DelayS(1);
-				STOP();
-			}
-            else
-            {
-                STATE = 1;
-                EEPROMwrite(eSTATE,STATE);
-                Forward();
-				DelayS(ON_Time);
-				Brake();
-				DelayS(1);
-				STOP();
-			}
-        }
+//		if(KEY2 == 0)	//按键检测低电平
+//        {
+//            DelayMs(10);
+//            while(!KEY2);
+//            
+//			if(STATE)
+//            {
+//                STATE = 0;
+//                EEPROMwrite(eSTATE,STATE);
+//                
+//				Backward();
+//				DelayS(OFF_Time);
+//				Brake();
+//				DelayS(1);
+//				STOP();
+//			}
+//            else
+//            {
+//                STATE = 1;
+//                EEPROMwrite(eSTATE,STATE);
+//                Forward();
+//				DelayS(ON_Time);
+//				Brake();
+//				DelayS(1);
+//				STOP();
+//			}
+//        }
         
 //		for(FCount=0;FCount<100;FCount++)	//输出100次波形	
 //		{
