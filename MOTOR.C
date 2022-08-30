@@ -2,7 +2,7 @@
 #ifndef __MOTOR_H
 #define __MOTOR_H
 
-#define REVERSE 0
+#define REVERSE 0 
 
 #if REVERSE
 #define INA    RC0

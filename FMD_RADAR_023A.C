@@ -11,8 +11,8 @@
 #include "Hardward.c"
 #include "motor.c"
 
-#define ON_Time		2		//s
-#define	OFF_Time		2
+#define ON_Time		1000		//s
+#define	OFF_Time		600
 
 #define KEY1    RA2
 #define KEY2    RA3
@@ -102,6 +102,13 @@ void Sys_Init(void)
 
     OPTION = 0B00001000;    //Bit3 = 1 预分频器分配给 WDT；PS=000=1:1 WDT RATE	
 											//Bit7(RAPU)=0 ENABLED PULL UP PA
+                                            
+	IOCA2 = 0;  				//禁止PA2电平变化中断
+	IOCA3 = 0;  				//禁止PA3电平变化中断
+	IOCA5 = 0;  				//禁止PA2电平变化中断
+    
+	PAIE =1;   						//使能PA INT中断
+	GIE =1;    						//使能全局中断
 }
 
 void PA_Level_Change_INITIAL(void)
@@ -160,7 +167,7 @@ void InitRam(void)
     if(set!=0x5A)
     {
 		set=0x5A;
-        STATE = 1;
+        STATE = 0;
         
 		EEPROMwrite(eSTATE,STATE);
 		EEPROMwrite(eSetAddr, set);  
@@ -187,36 +194,39 @@ int main(void)
 	while(1)
     {
 		DelayMs(10);	
-        STATE = EEPROMread(eSTATE);	//读取
-
-        if(POUT == 1)	//雷达检测高电平——开
+        //STATE = EEPROMread(eSTATE);	//读取
+        
+		if(RADAR == 1)	//雷达已开
         {
-			if(STATE == 0)
-            {
-				Forward();
-				DelayS(ON_Time);
-				Brake();
-				DelayMs(100);
-				STOP();
-				
-				STATE = 1;
-				EEPROMwrite(eSTATE,STATE);
-            }
+			if(POUT == 1)	//雷达检测高电平——开
+			{
+				if(STATE == 0)
+				{
+					Forward();
+					DelayMs(ON_Time);
+					Brake();
+					DelayMs(100);
+					STOP();
+					
+					STATE = 1;
+					EEPROMwrite(eSTATE,STATE);
+				}
+			}
+			else		//雷达检测低电平——关
+			{
+				if(STATE)
+				{
+					Backward();
+					DelayMs(OFF_Time);
+					Brake();
+					DelayMs(100);
+					STOP();
+					
+					STATE = 0;
+					EEPROMwrite(eSTATE,STATE);
+				}
+			}
         }
-        else		//雷达检测低电平——关
-        {
-			if(STATE)
-            {
-				Backward();
-				DelayS(OFF_Time);
-				Brake();
-				DelayMs(100);
-				STOP();
-				
-				STATE = 0;
-				EEPROMwrite(eSTATE,STATE);
-            }
-		}
         
 		if(KEY2 == 0)
         {
@@ -241,7 +251,7 @@ int main(void)
 				LED = OFF;
             }
 		}
-        
+       
 		if(KEY1 == 0)
         {
             KEY1_OK = True;
@@ -258,7 +268,7 @@ int main(void)
 					EEPROMwrite(eSTATE,STATE);
 					
 					Backward();
-					DelayS(OFF_Time);
+					DelayMs(OFF_Time);
 					Brake();
 					DelayMs(100);
 					STOP();
@@ -269,7 +279,7 @@ int main(void)
 					EEPROMwrite(eSTATE,STATE);
 					
 					Forward();
-					DelayS(ON_Time);
+					DelayMs(ON_Time);
 					Brake();
 					DelayMs(100);
 					STOP();
