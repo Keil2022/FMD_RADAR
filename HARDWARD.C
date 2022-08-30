@@ -63,9 +63,9 @@ void DelayUs(unsigned char Time)
  *	输入参数：Time 延时时间长度 延时时长Time ms
  *	返回参数：无 
  -------------------------------------------------*/
-void DelayMs(unsigned char Time)
+void DelayMs(unsigned int Time)
 {
-	unsigned char a,b;
+	unsigned int a,b;
 	for(a=0;a<Time;a++)
 	{
 		for(b=0;b<5;b++)

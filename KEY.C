@@ -7,8 +7,7 @@
 #include "RADAR.c"
 #include "Hardward.c"
 
-#define KEY1    RA3
-#define KEY2    RA2
+
 
 #define KEY_Press 	1
 #define KEY_Lift 		0
@@ -42,12 +41,6 @@ void Key_Init(void)
    
 	TRISA3 = 1;	//输入模式
 	//WPUA3 = 1;	//弱上拉 
-    
-	KEY1_Phase = 0;
-    KEY1_TimeCount = 0;
-    
-	KEY2_Phase = 0;
-    KEY2_TimeCount = 0;
 }
 
 void Key1_Scanf(void)

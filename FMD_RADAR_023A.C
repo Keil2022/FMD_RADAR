@@ -8,23 +8,39 @@
 //===========================================================
 //===========================================================
 #include "SYSCFG.h"
-#include "key.c"
-#include "led.c"
 #include "Hardward.c"
-#include "RADAR.c"
 #include "motor.c"
 
-#define ON_Time		10		//s
-#define	OFF_Time		10
+#define ON_Time		2		//s
+#define	OFF_Time		2
+
+#define KEY1    RA2
+#define KEY2    RA3
+
+#define LED_P		RC5
+#define LED			RA4
+
+#define RADAR	RA6
+#define POUT	RA5
+
+#define ON 	1
+#define OFF	0
+
+#define True 	1
+#define Fault		0
 
 BITS_T falg;
-#define STATE	falg.bit0	//0-关；1-开
+#define STATE		falg.bit0	//0-关；1-开
+#define KEY1_OK	falg.bit1
+#define KEY2_OK	falg.bit2
 
 #define eSTATE 	0
 #define	eSetAddr	1
 
 u8 ReadAPin;
 u8 FCount;
+
+void Test(void);
 
 //中断入口
 void interrupt ISR(void)
@@ -99,12 +115,39 @@ void PA_Level_Change_INITIAL(void)
 	ReadAPin = PORTA;			//清PA电平变化中断
 	PAIF =0;   						//清PA INT中断标志位
     
-	IOCA2 = 1;  				//禁止PA2电平变化中断
-	IOCA3 = 1;  				//禁止PA3电平变化中断
-	IOCA5 = 1;  				//禁止PA2电平变化中断
+	IOCA2 = 1;  				//使能PA2电平变化中断
+	IOCA3 = 1;  				//使能PA3电平变化中断
+	IOCA5 = 1;  				//使能PA5电平变化中断
     
 	PAIE =1;   						//使能PA INT中断
-   //GIE =1;    						//使能全局中断
+	GIE =1;    						//使能全局中断
+}
+
+void Key_Init(void)
+{
+	TRISA2 = 1;	//输入模式	//0-输出；1-输入；
+	//WPUA2 = 1;	//弱上拉
+   
+	TRISA3 = 1;	//输入模式
+	//WPUA3 = 1;	//弱上拉 
+}
+
+void LED_Init(void)
+{
+	TRISA4 = 0;	//0:输出模式
+    TRISC5 = 0;	//0:输出模式
+	
+    LED_P = OFF;
+    LED = OFF;
+}
+
+void Radar_Init(void)
+{
+	TRISA6 = 0;	//输出模式	//0-输出；1-输入；
+	RADAR = 0;
+    
+	TRISA5 = 1;	//输入模式
+    //WPUA5 = 1;	//弱上拉
 }
 
 //数据初始化
@@ -123,12 +166,15 @@ void InitRam(void)
 		EEPROMwrite(eSetAddr, set);  
     }
     STATE = EEPROMread(eSTATE);
+    
+	KEY1_OK = Fault;
+    KEY2_OK = Fault;
 }
 
 //主函数
 int main(void)
 {
-	//DelayS(2);	//热机，让外设就位
+	DelayS(2);	//热机，让外设就位
     
 	Sys_Init();
     Key_Init();
@@ -140,103 +186,128 @@ int main(void)
 
 	while(1)
     {
-//		DelayMs(10);	
-//        STATE = EEPROMread(eSTATE);	//读取状态
-        
-		if(KEY2)	//按键检测低电平
-        {
-			LED_G();
-	   }
-       else
-       {
-			LED_OFF();
-}
+		DelayMs(10);	
+        STATE = EEPROMread(eSTATE);	//读取
 
-//        if(POUT == 1)	//雷达检测高电平——开
-//        {
-//			if(STATE == 0)
-//            {
-//				Forward();
-//				DelayS(ON_Time);
-//				Brake();
-//				DelayS(1);
-//				STOP();
-//				
-//				STATE = 1;
-//				EEPROMwrite(eSTATE,STATE);
-//            }
-//        }
-//        else		//雷达检测低电平——关
-//        {
-//			if(STATE)
-//            {
-//				Backward();
-//				DelayS(OFF_Time);
-//				Brake();
-//				DelayS(1);
-//				STOP();
-//				
-//				STATE = 0;
-//				EEPROMwrite(eSTATE,STATE);
-//            }
-//		}
+        if(POUT == 1)	//雷达检测高电平——开
+        {
+			if(STATE == 0)
+            {
+				Forward();
+				DelayS(ON_Time);
+				Brake();
+				DelayMs(100);
+				STOP();
+				
+				STATE = 1;
+				EEPROMwrite(eSTATE,STATE);
+            }
+        }
+        else		//雷达检测低电平——关
+        {
+			if(STATE)
+            {
+				Backward();
+				DelayS(OFF_Time);
+				Brake();
+				DelayMs(100);
+				STOP();
+				
+				STATE = 0;
+				EEPROMwrite(eSTATE,STATE);
+            }
+		}
         
-//		if(KEY1 == 0)	//按键检测低电平
-//        {
-//            DelayMs(10);
-//            while(!KEY1);
-//            
-//            RADAR ^= 1;
-//            
-//            if(RADAR)		LED_G();
-//            else				LED_R();
-//            
-//            DelayMs(500);
-//            LED_OFF();
-//            
-//            while(POUT);	//等待模块启动完成
-//		}
+		if(KEY2 == 0)
+        {
+            KEY2_OK = True;
+		}
+        else	//检测松手有效
+        {
+            if(KEY2_OK == True)
+            {
+                KEY2_OK = Fault;
+                
+				RADAR ^= 1;
+				
+				/*ON -- 常亮；OFF -- 闪烁*/
+				for(FCount=0;FCount<3;FCount++)
+				{
+					LED = ON;
+					DelayMs(350);
+					if(RADAR == OFF)	LED = OFF;
+					DelayMs(350);
+				}
+				LED = OFF;
+            }
+		}
         
-//		if(KEY2 == 0)	//按键检测低电平
-//        {
-//            DelayMs(10);
-//            while(!KEY2);
-//            
-//			if(STATE)
-//            {
-//                STATE = 0;
-//                EEPROMwrite(eSTATE,STATE);
-//                
-//				Backward();
-//				DelayS(OFF_Time);
-//				Brake();
-//				DelayS(1);
-//				STOP();
-//			}
-//            else
-//            {
-//                STATE = 1;
-//                EEPROMwrite(eSTATE,STATE);
-//                Forward();
-//				DelayS(ON_Time);
-//				Brake();
-//				DelayS(1);
-//				STOP();
-//			}
-//        }
+		if(KEY1 == 0)
+        {
+            KEY1_OK = True;
+		}
+		else	//检测松手有效
+        {
+			if(KEY1_OK == True)
+            {
+                KEY1_OK = Fault;
+                
+				if(STATE)
+				{
+					STATE = 0;
+					EEPROMwrite(eSTATE,STATE);
+					
+					Backward();
+					DelayS(OFF_Time);
+					Brake();
+					DelayMs(100);
+					STOP();
+				}
+				else
+				{
+					STATE = 1;
+					EEPROMwrite(eSTATE,STATE);
+					
+					Forward();
+					DelayS(ON_Time);
+					Brake();
+					DelayMs(100);
+					STOP();
+				}
+            }
+        }
         
-//		for(FCount=0;FCount<100;FCount++)	//输出100次波形	
-//		{
-//			RADAR = 1;				
-//			DelayMs(10);  	//10ms 
-//			RADAR = 0;
-//			DelayMs(10); 
-//		}
+		//Test();
         
-//       PA_Level_Change_INITIAL();
-//       GIE = 1; 
-//       SLEEP(); 
+		PA_Level_Change_INITIAL();
+		SLEEP(); 
 	}
 	return 0;
 }
+
+void Test(void)
+{
+	if(KEY1 == 0)
+	{
+		for(FCount=0;FCount<100;FCount++)	//输出100次波形	
+		{
+			LED = 1;				
+			DelayMs(5);  	//10ms 
+			LED = 0;
+			DelayMs(15); 
+		}
+	}
+	else
+	{
+		for(FCount=0;FCount<100;FCount++)	//输出100次波形	
+		{
+			LED = 1;
+			DelayMs(10);  					//10ms 
+			LED = 0;
+			DelayMs(10); 
+		}
+	}
+}
+
+
 //===========================================================
