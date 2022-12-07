@@ -11,20 +11,22 @@
 #include "Hardward.c"
 #include "motor.c"
 
-#define ON_Time		1000		//s
-#define	OFF_Time		600
+#define ON_Time		1000		//开	动作时间
+#define	OFF_Time		600			//关	动作时间
+#define FlashTIM		100			//LED闪烁时间
 
-#define KEY1    RA2
-#define KEY2    RA3
+#define KEY1    RA7
+#define KEY2    RA4
 
-#define LED_P		RC5
-#define LED			RA4
+#define LED		RC5
 
-#define RADAR	RA6
 #define POUT	RA5
 
 #define ON 	1
 #define OFF	0
+
+#define HIGHT	1
+#define LOW 	0
 
 #define True 	1
 #define Fault		0
@@ -33,9 +35,11 @@ BITS_T falg;
 #define STATE		falg.bit0	//0-关；1-开
 #define KEY1_OK	falg.bit1
 #define KEY2_OK	falg.bit2
+#define Rader		falg.bit3
 
 #define eSTATE 	0
 #define	eSetAddr	1
+#define eRader		2
 
 u8 ReadAPin;
 u8 FCount;
@@ -51,9 +55,9 @@ void interrupt ISR(void)
 		ReadAPin = PORTA; 	//读取PORTA数据清PAIF标志
 		PAIF = 0;  				//清PAIF标志位
 		PAIE = 0;  				//暂先禁止PA2中断
-		IOCA2 = 0;  				//禁止PA2电平变化中断
-        IOCA3 = 0;  				//禁止PA3电平变化中断
-        IOCA5 = 0;  				//禁止PA2电平变化中断
+		IOCA4 = 0;  				//禁止PA2电平变化中断
+        IOCA5 = 0;  				//禁止PA3电平变化中断
+        IOCA7 = 0;  				//禁止PA2电平变化中断
     }
 }
 
@@ -103,9 +107,9 @@ void Sys_Init(void)
     OPTION = 0B00001000;    //Bit3 = 1 预分频器分配给 WDT；PS=000=1:1 WDT RATE	
 											//Bit7(RAPU)=0 ENABLED PULL UP PA
                                             
-	IOCA2 = 0;  				//禁止PA2电平变化中断
-	IOCA3 = 0;  				//禁止PA3电平变化中断
-	IOCA5 = 0;  				//禁止PA2电平变化中断
+	IOCA4 = 0;  				//禁止PA4电平变化中断
+	IOCA5 = 0;  				//禁止PA5电平变化中断
+	IOCA7 = 0;  				//禁止PA7电平变化中断
     
 	PAIE =1;   						//使能PA INT中断
 	GIE =1;    						//使能全局中断
@@ -113,18 +117,18 @@ void Sys_Init(void)
 
 void PA_Level_Change_INITIAL(void)
 {
-	ANSEL = 0B11010011;		//关闭中断引脚模拟输入功能
+	ANSEL = 0X00;			//关闭引脚模拟输入功能
     
-    TRISA2 = 1;						//SET PA2 INPUT
-    TRISA3 = 1;
-	TRISA5 =1; 						
+    TRISA4 = 1;						//SET INPUT
+    TRISA5 = 1;
+	TRISA7 =1; 						
     
 	ReadAPin = PORTA;			//清PA电平变化中断
 	PAIF =0;   						//清PA INT中断标志位
     
-	IOCA2 = 1;  				//使能PA2电平变化中断
-	IOCA3 = 1;  				//使能PA3电平变化中断
+	IOCA4 = 1;  				//使能PA4电平变化中断
 	IOCA5 = 1;  				//使能PA5电平变化中断
+	IOCA7 = 1;  				//使能PA7电平变化中断
     
 	PAIE =1;   						//使能PA INT中断
 	GIE =1;    						//使能全局中断
@@ -132,27 +136,23 @@ void PA_Level_Change_INITIAL(void)
 
 void Key_Init(void)
 {
-	TRISA2 = 1;	//输入模式	//0-输出；1-输入；
-	//WPUA2 = 1;	//弱上拉
+	TRISA7 = 1;	//输入模式	//0-输出；1-输入；
+	WPUA7 = 1;	//弱上拉
    
-	TRISA3 = 1;	//输入模式
-	//WPUA3 = 1;	//弱上拉 
+	TRISA4 = 1;	//输入模式
+	WPUA4 = 1;	//弱上拉
 }
 
 void LED_Init(void)
 {
-	TRISA4 = 0;	//0:输出模式
     TRISC5 = 0;	//0:输出模式
 	
-    LED_P = OFF;
     LED = OFF;
 }
 
 void Radar_Init(void)
 {
-	TRISA6 = 0;	//输出模式	//0-输出；1-输入；
-	RADAR = 0;
-    
+	//0-输出；1-输入；
 	TRISA5 = 1;	//输入模式
     //WPUA5 = 1;	//弱上拉
 }
@@ -168,12 +168,15 @@ void InitRam(void)
     {
 		set=0x5A;
         STATE = 0;
-        
+		Rader = 1;
+
 		EEPROMwrite(eSTATE,STATE);
-		EEPROMwrite(eSetAddr, set);  
+		EEPROMwrite(eSetAddr, set); 
+        EEPROMwrite(eRader,Rader);
     }
     STATE = EEPROMread(eSTATE);
-    
+	Rader = EEPROMread(eRader);
+
 	KEY1_OK = Fault;
     KEY2_OK = Fault;
 }
@@ -196,11 +199,11 @@ int main(void)
 		DelayMs(10);	
         //STATE = EEPROMread(eSTATE);	//读取
         
-		if(RADAR == 1)	//雷达已开
+		if(Rader == ON)	//雷达已开
         {
-			if(POUT == 1)	//雷达检测高电平——开
+			if(POUT == HIGHT)	//雷达检测高电平——开
 			{
-				if(STATE == 0)
+				if(STATE == OFF)
 				{
 					Forward();
 					DelayMs(ON_Time);
@@ -208,7 +211,7 @@ int main(void)
 					DelayMs(100);
 					STOP();
 					
-					STATE = 1;
+					STATE = ON;
 					EEPROMwrite(eSTATE,STATE);
 				}
 			}
@@ -222,7 +225,7 @@ int main(void)
 					DelayMs(100);
 					STOP();
 					
-					STATE = 0;
+					STATE = OFF;
 					EEPROMwrite(eSTATE,STATE);
 				}
 			}
@@ -238,15 +241,16 @@ int main(void)
             {
                 KEY2_OK = Fault;
                 
-				RADAR ^= 1;
-				
+				Rader ^= 1;
+				EEPROMwrite(eRader,Rader);
+
 				/*ON -- 常亮；OFF -- 闪烁*/
 				for(FCount=0;FCount<3;FCount++)
 				{
 					LED = ON;
-					DelayMs(350);
-					if(RADAR == OFF)	LED = OFF;
-					DelayMs(350);
+					DelayMs(FlashTIM);
+					if(Rader == OFF)	LED = OFF;
+					DelayMs(FlashTIM);
 				}
 				LED = OFF;
             }
@@ -264,7 +268,7 @@ int main(void)
                 
 				if(STATE)
 				{
-					STATE = 0;
+					STATE = OFF;
 					EEPROMwrite(eSTATE,STATE);
 					
 					Backward();
@@ -275,7 +279,7 @@ int main(void)
 				}
 				else
 				{
-					STATE = 1;
+					STATE = ON;
 					EEPROMwrite(eSTATE,STATE);
 					
 					Forward();
