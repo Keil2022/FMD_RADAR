@@ -311,7 +311,7 @@ void Test(void)
 			DelayMs(15); 
 		}
 	}
-	else
+	else if(KEY1 == 1)
 	{
 		for(FCount=0;FCount<100;FCount++)	//Êä³ö100´Î²¨ÐÎ	
 		{
